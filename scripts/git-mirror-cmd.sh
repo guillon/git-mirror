@@ -6,12 +6,12 @@
 # commands executed on a host serving git.
 # If an upload command is executed:
 # - either git-upload-pack or git-upload-archive
-# - if the repo exists locally it is served directly
+# - if the repo exists locally, it is served directly
 #   otherwise the upload is redirected to the master
 #
-# If a receive command  is executed:
+# If a receive command is executed:
 # - a git-receive-pack
-# - if the repo exists locally and is a mirror the
+# - if the repo exists locally and is a mirror, the
 #   receive is redirected to the master
 #   otherwise the receive is done locally
 #
@@ -22,8 +22,8 @@
 # on the master.
 # Then actual accesses on the master (read or write)
 # are done by the single master_user, which must have
-# read/write rights for all mirrored and redirected
-# repositories.
+# read/write rights on the master server for all the
+# repositories possibly accesed through the mirror.
 # 
 set -eu
 set -o pipefail

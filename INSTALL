@@ -6,14 +6,14 @@ when the mirror server is accessed through ssh for git commands
 the git-upload-pack/archive and git-receive-pack are executed
 in place of the standard /usr/bin/git-upload-pack|archive (for read
 from the repositories) and /usr/bin/git-receive-pack (for write to
-the repositories)
+the repositories).
 
 Installation of tools
 =====================
 
 On the server that stores mirrored gits,
-install under the master_user account the tools
-and set the PATH to point to the tools in first place.
+install the tools under the account that runs the mirror
+side git layer and set the PATH to point to the tools in first place.
 
 IMPORTANT: it is mandatory to have the path to
 git-mirror/bin first in PATH as it contains executables
@@ -27,17 +27,17 @@ Install with::
     user@mirror$ # create ~/.git-mirror/config (see below) with at least:
     user@mirror$ cat > ~/.git-mirror/config <<EOF
     [git-mirror]
-        master_server=<master_server>     # for instance git.server.com
-        master_user=<master_user>         # for instance you or git-mirror-user
-        master-identity = ~/.ssh/id_rsa   # the pub key for git-mirror-user
-
+        master-server=<master_server>     # for instance git.server.com
+        master-user=<master_user>         # for instance gitolite
+        master-identity = ~/.ssh/id_rsa   # the pub key for user on git.server.com
+    EOF
     user@mirror$ cat "PATH=$HOME/git-mirror/bin:$PATH" >>.bashrc 
 
 With this setup the mirror will be served through the git-mirror commands
 that act as a proxy for read request. It will not activate the proxy for write
 requests, see the configuration below to do so.
 
-NOTE: this example assumes a bash login shell, for other shells uses
+NOTE: this example assumes a bash login shell, for other shells use
 either ~/.cshrc, ~/.tcshrc or other profile which is executed through
 a ssh login.
 
@@ -45,7 +45,7 @@ IMPORTANT: verify that a the ssh to this account actually have
 git-upload-pack taken from this location::
 
     client@host$ ssh mirror which git-upload-pack
-/home/user/git-mirror/bim/git-upload-pack
+/home/user/git-mirror/bin/git-upload-pack
 
 If it is not the case, setup your shell startup scripts to
 do so.
@@ -60,20 +60,20 @@ Configuring the mirror proxy
 
 Configure your mirror master by adding a ~/.git-mirror/config file.
 
-In paticular master_* values are mandatory::
+In paticular master-* values are mandatory::
 
     $ cat $HOME/.git-mirror/config
     [git-mirror]
-        master_server=<master_server>  # for instance git.server.com
-        master_user=<master_user>      # for instance you or git-mirror-user
-        master_identity=<patch to key file pair> # for instance ~/.ssh/id_rsa
+        master-server=<master_server>  # for instance git.server.com
+        master-user=<master_user>      # for instance gitolite
+        master-identity=<patch to key file pair> # for instance ~/.ssh/id_rsa
         #debug = false        # true enables logs (default: false)
         #enable-read = true   # false blocks reads to master (default: true)
         #enable-write = false # false blocks writes to master (default: false)
 
-The debug parameter should be used have logs output in ~/.git-mirror/git-mirror.log
+The debug parameter is used have logs output in ~/.git-mirror/git-mirror.log
 when some issue occurs, do not let it activated for a while as you may fill-up
-your home dir.
+the mirror user home dir.
 
 The enable-read parameter is true by default (i.e. read only proxy), if for
 some reason you want to block read accesses to the master_server, set it to
@@ -105,7 +105,7 @@ Do for instance a clone of myrepo with::
     $ git clone ssh://mirror_user@mirror/myrepo
 
 This will actually not do more than expected, i.e. just fetch from the
-mirrored repository in mirror server.
+mirrored repository on the mirror server.
 
 Then, do for instance a clone of a non mirrored repo nomirrorrepo::
 
@@ -113,7 +113,3 @@ Then, do for instance a clone of a non mirrored repo nomirrorrepo::
 
 This will actually clone from the master_server as this repo does not exists
 on the mirror server.
-
-
-
-
