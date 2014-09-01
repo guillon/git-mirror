@@ -62,7 +62,35 @@ function cleanup() {
 }
 trap cleanup INT TERM QUIT EXIT
 
+# Usage
+function usage() {
+    cat <<EOF
+Usage for git-mirror-cmd:
+
+The git-mirror-cmd should not be called directly when installed
+on a mirror git server.
+
+Actually the git-upload/receive commands are links to this scripts
+and will act as a proxy between the git client and the master git server.
+
+When called directly, the only available functionalities are this help
+screen and the version information:
+
+  git-mirror-cmd -v|--version : get version
+  git-mirror-cmd -h|--help : this usage screen
+
+EOF
+}
+
+# Version
+function version() {
+    local sha1
+    sha1=$(sha1sum $0 | cut -f1 -d' ')
+    echo "$base version $VERSION [sha1:$sha1]"
+}
+
 # Globals
+declare -r VERSION="v0.2"
 declare -r cfgfile="$HOME/.git-mirror/config"
 declare -r logfile="$HOME/.git-mirror/git-mirror.log"
 
@@ -167,6 +195,9 @@ function check_config() {
 function mirror_receive() {
     local cmd="${1?}"
     shift
+
+    read_config
+    check_config
     log "INFO: eval: $cmd $*"
     local dir="$(get_dir_param "$@")"
     [ "$dir" != "" ] || fatal "can't find dir parameter"
@@ -201,6 +232,9 @@ function mirror_receive() {
 function mirror_upload() {
     local cmd="${1?}"
     shift
+
+    read_config
+    check_config
     log "INFO: eval: $cmd $*"
     local dir="$(get_dir_param "$@")"
     [ "$dir" != "" ] || fatal "can't find dir parameter"
@@ -238,12 +272,26 @@ function mirror_upload() {
     fi
 }
 
-read_config
-check_config
+# Direct call to git-mirror-cmd
+function mirror_cmd() {
+    case "${1-}" in
+        -h|--help) \
+            usage ;;
+        -v|--version) \
+            version ;;
+        *) \
+            echo "$base: error: unexpected use. Get usage with $base --help." >&2
+            exit 1 ;;
+    esac
+}
 
+#
+# Main processing
+#
 case "$base" in
-    git-receive-pack) mirror_receive "$base" "$@";;
-    git-upload-pack) mirror_upload "$base" "$@";;
-    git-upload-archive) mirror_upload "$base" "$@";;
-    *) fatal "unexpected base for $real_base: $base";;
+    git-receive-pack) mirror_receive "$base" "$@" ;;
+    git-upload-pack) mirror_upload "$base" "$@" ;;
+    git-upload-archive) mirror_upload "$base" "$@" ;;
+    git-mirror-cmd) mirror_cmd "$@" ;;
+    *) fatal "unexpected base for $real_base: $base" ;;
 esac
