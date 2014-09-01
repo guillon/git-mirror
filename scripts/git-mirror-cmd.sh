@@ -1,6 +1,26 @@
 #!/usr/bin/env bash
 #
-# git-mirror-cmd.sh
+# Copyright (c) STMicroelectronics 2014
+#
+# This file is part of git-mirror.
+#
+# git-mirror is free software: you can redistribute it and/or modify 8
+# it under the terms of the GNU General Public License v2.0
+# as published by the Free Software Foundation
+#
+# git-mirror is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of 13
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# v2.0 along with git-mirror. If not, see <http://www.gnu.org/licenses/>.
+#
+
+#
+# Usage: get usage with git-mirror -h
+#
+# Ref to INSTALL file for installation and configuration.
 #
 # Implements a proxy for git upload/receive
 # commands executed on a host serving git.
@@ -24,7 +44,8 @@
 # are done by the single master_user, which must have
 # read/write rights on the master server for all the
 # repositories possibly accesed through the mirror.
-# 
+#
+
 set -eu
 set -o pipefail
 
