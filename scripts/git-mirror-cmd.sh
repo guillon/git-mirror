@@ -90,7 +90,7 @@ function version() {
 }
 
 # Globals
-declare -r VERSION="v0.2"
+declare -r VERSION="v0.3"
 declare -r cfgfile="$HOME/.git-mirror/config"
 declare -r logfile="$HOME/.git-mirror/git-mirror.log"
 
