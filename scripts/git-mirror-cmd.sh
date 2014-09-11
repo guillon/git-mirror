@@ -115,6 +115,8 @@ declare write_enabled=""
 declare -r default_write_enabled="false"
 declare read_enabled=""
 declare -r default_read_enabled="true"
+declare local_base=""
+declare -r default_local_base=""
 declare debug=""
 declare -r default_debug="false"
 
@@ -150,8 +152,22 @@ function read_config() {
     git_upload_archive="$(git config -f "$tmpdir/config" --path git-mirror.git-upload-archive || echo "$default_git_upload_archive")"
     write_enabled="$(git config -f "$tmpdir/config" --bool git-mirror.write-enabled || echo "$default_write_enabled")"
     read_enabled="$(git config -f "$tmpdir/config" --bool git-mirror.read-enabled || echo "$default_read_enabled")"
+    local_base="$(git config -f "$tmpdir/config" --path git-mirror.local-base || echo "$default_local_base")"
     debug="$(git config -f "$tmpdir/config" --bool git-mirror.debug || echo "$default_debug")"
     rm -rf "$tmpdir"
+}
+
+# Expands ~/... or ~.
+# TODO: expansion of ~user is not supported
+function expand_tilde {
+    local dir="${1?}"
+    if [ "${dir::2}" = "~/" ]; then
+        dir="$HOME/${dir:2}"
+    elif [ "${dir}" = "~" ]; then
+        dir="$HOME"
+    fi
+    echo "$dir"
+
 }
 
 # Get the expanded dir parameter from the
@@ -161,8 +177,19 @@ function get_dir_param {
     local dir="${1-}"
     [ "$dir" != "" ] || return 0
     # git supports expansion of ~/
-    [ "${dir::2}" = "~/" ] && dir="$HOME/${dir:2}"
+    dir="$(expand_tilde "$dir")"
     echo "${dir%.git}.git"
+}
+
+# Get the remote directory from the locally requested
+# directory
+function get_remote_dir {
+    local local_dir="${1?}"
+    if [ "$local_base" != "" ]; then
+	local_dir="${local_dir#$local_base}"
+	local_dir="${local_dir#/}"
+    fi
+    echo "${local_dir}"
 }
 
 # Check that configuration is valid
@@ -199,12 +226,13 @@ function mirror_receive() {
     read_config
     check_config
     log "INFO: eval: $cmd $*"
-    local dir="$(get_dir_param "$@")"
-    [ "$dir" != "" ] || fatal "can't find dir parameter"
+    local local_dir="$(get_dir_param "$@")"
+    [ "$local_dir" != "" ] || fatal "can't find dir parameter"
+    local remote_dir="$(get_remote_dir "$local_dir")"
     local is_mirror
     local is_local
-    if [ -d "$dir" ]; then
-	is_mirror="$(git config -f "$dir/config" --bool remote.origin.mirror 2>/dev/null || echo false)"
+    if [ -d "$local_dir" ]; then
+	is_mirror="$(git config -f "$local_dir/config" --bool remote.origin.mirror 2>/dev/null || echo false)"
 	is_local=true
     else
 	is_mirror=false
@@ -220,8 +248,8 @@ function mirror_receive() {
 	    log "INFO: mirror receive disabled (write_enabled == false). Aborting master receive"
 	    fatal "mirror is not setup to allow write to master, write aborted"
 	fi
-	log "INFO: exec: $ssh $ssh_opts -i$master_identity $master_user@$master_server git-receive-pack $*"
-	exec "$ssh" $ssh_opts -i"$master_identity" "$master_user"@"$master_server" git-receive-pack "$@"
+	log "INFO: exec: $ssh $ssh_opts -i$master_identity $master_user@$master_server git-receive-pack '$remote_dir'"
+	exec "$ssh" $ssh_opts -i"$master_identity" "$master_user"@"$master_server" git-receive-pack "'$remote_dir'"
     fi
 }
 
@@ -236,13 +264,14 @@ function mirror_upload() {
     read_config
     check_config
     log "INFO: eval: $cmd $*"
-    local dir="$(get_dir_param "$@")"
-    [ "$dir" != "" ] || fatal "can't find dir parameter"
+    local local_dir="$(get_dir_param "$@")"
+    [ "$local_dir" != "" ] || fatal "can't find dir parameter"
+    local remote_dir="$(get_remote_dir "$local_dir")"
     local is_mirror
     local is_local
-    if [ -d "$dir" ]; then
+    if [ -d "$local_dir" ]; then
 	is_local=true
-	is_mirror="$(git config -f "$dir/config" --bool remote.origin.mirror 2>/dev/null || echo false)"
+	is_mirror="$(git config -f "$local_dir/config" --bool remote.origin.mirror 2>/dev/null || echo false)"
     else
 	is_local=false
 	is_mirror=false
@@ -267,8 +296,8 @@ function mirror_upload() {
 	    log "INFO: mirror upload disabled (read_enabled == false). Aborting master upload"
 	    fatal "mirror is not setup to allow read of master repositories, read aborted"
 	fi
-	log "INFO: exec: $ssh $ssh_opts -i$master_identity $master_user@$master_server $cmd $*"
-	exec "$ssh" $ssh_opts -i"$master_identity" "$master_user"@"$master_server" "$cmd" "$@"
+	log "INFO: exec: $ssh $ssh_opts -i$master_identity $master_user@$master_server $cmd '$remote_dir'"
+	exec "$ssh" $ssh_opts -i"$master_identity" "$master_user"@"$master_server" "$cmd" "'$remote_dir'"
     fi
 }
 

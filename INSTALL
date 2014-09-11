@@ -8,6 +8,8 @@ in place of the standard /usr/bin/git-upload-pack|archive (for read
 from the repositories) and /usr/bin/git-receive-pack (for write to
 the repositories).
 
+For the integration with gitolite v2.x, see the related section below.
+
 Installation of tools
 =====================
 
@@ -70,6 +72,7 @@ In paticular master-* values are mandatory::
         #debug = false        # true enables logs (default: false)
         #enable-read = true   # false blocks reads to master (default: true)
         #enable-write = false # false blocks writes to master (default: false)
+        #local-prefix = ~/repositories # if set remove this prefix for master (default: empty)
 
 The debug parameter is used have logs output in ~/.git-mirror/git-mirror.log
 when some issue occurs, do not let it activated for a while as you may fill-up
@@ -113,3 +116,71 @@ Then, do for instance a clone of a non mirrored repo nomirrorrepo::
 
 This will actually clone from the master_server as this repo does not exists
 on the mirror server.
+
+
+Integration with gitolite
+=========================
+
+If the git-mirror proxy tools are integrated under a gitolite
+authentication layer, one need first to apply a patch to
+gitolite in order to add a Pass-Through (P) specification in
+the gitolite credentials.
+
+The patch is located in contrib/gitolite/patches-g2 and applies
+to gitolite v2.x version only. No integration with gitolite v3.x
+was done yet.
+
+Either apply the patches into the sources before gitolite install::
+
+    $ cd ~/gitolite
+    $ cat ~/git-mirror/contrib/gitolite/patches-g2/* | patch -N -p1
+
+Or install the patches onto the installed gitolite scripts if already
+deployed (take care of the -p2 option then)::
+
+    $ cd ~/bin
+    $ cat ~/git-mirror/contrib/gitolite/patches-g2/* | patch -N -p2
+
+Then, install the git-mirror tools as described above. In the case
+of gitolite integration, do not care for the PATH setting as the
+GIT_PATH variable in the gitolite configuration will do the job.
+
+Though in the .git-mirror/config explicitly set the local-base to
+the same vale as the GL_REPO_BASE under gitolite, thus generally one
+may have a configuration such as::
+
+    $ cat $HOME/.git-mirror/config
+    [git-mirror]
+        master-server=<master_server>  # for instance git.server.com
+        master-user=<master_user>      # for instance gitolite
+        master-identity=<patch to key file pair> # for instance ~/.ssh/id_rsa
+        local-base = ~/repositories    # path to gitolite repositories
+
+Then in the ~/.gitolite.rc set the following variables values:
+
+    $GL_WILDREPOS = 1; # allows wild repos for P or C access
+    ...
+    $GIT_PATH = $ENV{HOME} . "/git-mirror/bin"; # Force path to git-mirror first
+
+Last, in order to allow a delegation of gitolite to the git-mirror
+proxy tools, one may modify for instance the gitolite configuration as
+usual through the gitolite-admin push, with for instance::
+
+    repo    gitolite-admin
+        RW+     =   guillon
+
+    repo    testing
+        RW+     =   @all
+
+    repo    [a-zA-Z_].*
+        P       = @all
+
+Note the last repo specification, which actually stands for:
+for any other repo matching the regexp (actually all repo names here)
+set P(ass-through) to @all.
+
+This will thus have the effect of delegating the management of the
+repository to the git-mirror proxy even when the repository does not
+exists locally.
+
+Note that you still have to configure the ~/.
