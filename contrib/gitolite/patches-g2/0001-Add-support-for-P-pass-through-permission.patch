@@ -1,4 +1,4 @@
-From a111ee1b15059cabdafac36c1c3402dfe9ee5560 Mon Sep 17 00:00:00 2001
+From ef68fbaf5bec30e396800df0f388ce945c338c1e Mon Sep 17 00:00:00 2001
 From: Christophe Guillon <christophe.guillon@st.com>
 Date: Thu, 11 Sep 2014 01:52:01 +0200
 Subject: [PATCH] Add support for P pass-through permission
@@ -7,11 +7,18 @@ Add P permission, which lets gitolite pass through to the
 git backend even if the repository exists.
 It is enabled only ig GL_WILDREPOS is set in .gitolite.rc.
 
+Tested on top of gitolite v2.2.1
+---
+ src/gitolite.pm     |  9 ++++++++-
+ src/gl-auth-command | 12 +++++++++---
+ src/gl-compile-conf |  4 +++-
+ 3 files changed, 20 insertions(+), 5 deletions(-)
+
 diff --git a/src/gitolite.pm b/src/gitolite.pm
-index 132bdbe..bf9b7e5 100644
+index 4d5f9e2..98e9fe0 100644
 --- a/src/gitolite.pm
 +++ b/src/gitolite.pm
-@@ -768,6 +768,7 @@ sub parse_acl
+@@ -729,6 +729,7 @@ sub parse_acl
          for my $u ('@all', "$gl_user - wild", @user_plus, keys %perm_cats) {
              my $du = $gl_user; $du = '@all' if $u eq '@all' or ($perm_cats{$u} || '') eq '@all';
              $repos{$dr}{C}{$du} = 1 if $repos{$r}{C}{$u};
@@ -19,7 +26,7 @@ index 132bdbe..bf9b7e5 100644
              $repos{$dr}{R}{$du} = 1 if $repos{$r}{R}{$u};
              $repos{$dr}{W}{$du} = 1 if $repos{$r}{W}{$u};
  
-@@ -837,6 +838,7 @@ sub add_repo_conf
+@@ -798,6 +799,7 @@ sub add_repo_conf
              $wild = parse_acl($repo, $ENV{GL_USER});
          }
  
@@ -27,7 +34,7 @@ index 132bdbe..bf9b7e5 100644
          if ($exists) {
              if ($creator and $wild) {
                  $creator = "($creator)";
-@@ -847,7 +849,7 @@ sub add_repo_conf
+@@ -808,7 +810,7 @@ sub add_repo_conf
              } else {
                  $creator = "<gitolite>";
              }
@@ -36,7 +43,7 @@ index 132bdbe..bf9b7e5 100644
              # repo didn't exist; C perms need to be filled in
              $perm = ( $repos{$repo}{C}{'@all'} ? ' @C' : ( $repos{$repo}{C}{$ENV{GL_USER}} ? ' =C' : '   ' )) if $GL_WILDREPOS;
              # if you didn't have perms to create it, delete the "convenience"
-@@ -857,6 +859,11 @@ sub add_repo_conf
+@@ -818,6 +820,11 @@ sub add_repo_conf
          }
          $perm .= perm_code( $repos{$repo}{R}{'@all'} || $repos{'@all'}{R}{'@all'}, $repos{'@all'}{R}{$ENV{GL_USER}}, $repos{$repo}{R}{$ENV{GL_USER}}, 'R' );
          $perm .= perm_code( $repos{$repo}{W}{'@all'} || $repos{'@all'}{W}{'@all'}, $repos{'@all'}{W}{$ENV{GL_USER}}, $repos{$repo}{W}{$ENV{GL_USER}}, 'W' );
@@ -79,6 +86,34 @@ index 851f614..c11057d 100755
 +
  $repo = "'$REPO_BASE/$repo.git'";
  exec("git", "shell", "-c", "$verb $repo") unless $verb eq 'git-init';
+diff --git a/src/gl-compile-conf b/src/gl-compile-conf
+index 910a2a9..b22a293 100755
+--- a/src/gl-compile-conf
++++ b/src/gl-compile-conf
+@@ -163,13 +163,14 @@ sub parse_conf_line
+         s/\bCREAT[EO]R\b/\$creator/g for @{ $repos_p };
+     }
+     # actual permission line
+-    elsif ($line =~ /^(-|C|R|RW\+?(?:C?D?|D?C?)) (.* )?= (.+)/)
++    elsif ($line =~ /^(-|P|C|R|RW\+?(?:C?D?|D?C?)) (.* )?= (.+)/)
+     {
+         my $perms = $1;
+         my @refs; @refs = split( ' ', $2 ) if $2;
+         @refs = expand_list ( @refs );
+         my @users = split ' ', $3;
+         die "$ABRT \$GL_WILDREPOS is not set, you cant use 'C' in config\n" if $perms eq 'C' and not $GL_WILDREPOS;
++        die "$ABRT \$GL_WILDREPOS is not set, you cant use 'P' in config\n" if $perms eq 'P' and not $GL_WILDREPOS;
+ 
+         # if no ref is given, this PERM applies to all refs
+         @refs = qw(refs/.*) unless @refs;
+@@ -215,6 +216,7 @@ sub parse_conf_line
+ 
+                 # for 1st level check (see faq/tips doc)
+                 $repos{$repo}{C}{$user} = 1, next if $perms eq 'C';
++                $repos{$repo}{P}{$user} = 1, next if $perms eq 'P';
+                 $repos{$repo}{R}{$user} = 1 if $perms =~ /R/;
+                 $repos{$repo}{W}{$user} = 1 if $perms =~ /W|D/;
+ 
 -- 
 1.8.4
 
