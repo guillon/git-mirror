@@ -72,7 +72,7 @@ In paticular master-* values are mandatory::
         #debug = false        # true enables logs (default: false)
         #enable-read = true   # false blocks reads to master (default: true)
         #enable-write = false # false blocks writes to master (default: false)
-        #local-prefix = ~/repositories # if set remove this prefix for master (default: empty)
+        #local-base = ~/repositories # if set remove this prefix from client path (default: empty)
 
 The debug parameter is used have logs output in ~/.git-mirror/git-mirror.log
 when some issue occurs, do not let it activated for a while as you may fill-up
