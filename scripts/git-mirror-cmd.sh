@@ -136,12 +136,25 @@ declare -r default_auto_create="false"
 declare debug=""
 declare -r default_debug="false"
 
-# Log to logfile
+# Log message to logfile
 function log() {
     local message="$1"
     [ "$debug" = "true" ] || return 0
+    local prefix="[$(date +'%Y-%m-%d-%T')] $real_base: $$: $base"
     mkdir -p "$(dirname "$logfile")"
-    echo "[$(date +'%Y-%m-%d-%T')] $real_base: $$: $base: $message" >> "$logfile"
+    echo "$prefix: $message" >> "$logfile"
+}
+
+# Log stdin to logfile
+function log_input() {
+    local message="$1"
+    if [ "$debug" != "true" ]; then
+	cat >/dev/null
+	return 0
+    fi
+    local prefix="[$(date +'%Y-%m-%d-%T')] $real_base: $$: $base"
+    mkdir -p "$(dirname "$logfile")"
+    sed "s!^!$prefix: $message: !" >> "$logfile"
 }
 
 # Fatal error reported to the remote client
@@ -301,11 +314,13 @@ function mirror_update() {
     local repo_dir="${1?}"
     local remote
     local git_ssh
+    local res=0
     [ -d "$repo_dir" ] || return 0
     git_ssh=$(mk_git_ssh)
     remote=$(GIT_DIR="$repo_dir" git config remote.origin.url)
-    log "INFO: exec: env GIT_DIR=$repo_dir GIT_SSH=$git_ssh git fetch origin"
-    GIT_DIR="$repo_dir" GIT_SSH="$git_ssh" git fetch origin >/dev/null 2>&1 || true
+    log "INFO: exec: env GIT_DIR=$repo_dir GIT_SSH=$git_ssh git fetch --prune origin"
+    GIT_DIR="$repo_dir" GIT_SSH="$git_ssh" git fetch --prune origin 2>&1 | log_input "INFO" || res=$?
+    [ "$res" = 0 ] || log "WARNING: could not fetch master origin: error code: $?"
 }
 
 # Acts as a proxy for receive_pack
@@ -390,7 +405,7 @@ function mirror_upload() {
 	log "INFO: exec: $local_cmd '$local_dir'"
 	"$local_cmd" "$local_dir"
     elif [ "$is_local" = true -a "$is_mirror" = true ]; then
-	log "INFO: repository exists locally and has mirror = true. Serving upload of mirrored repository from mirror (assume up to date)"
+	log "INFO: repository exists locally and has mirror = true. Serving upload of mirrored repository from mirror"
 	if [ "$read_enabled" = "false" ]; then
 	    log "INFO: mirror upload disabled (read_enabled == false). Aborting mirror upload"
 	    fatal "mirror is not setup to allow read of mirrored master repositories, read aborted"
