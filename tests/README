@@ -1,0 +1,10 @@
+Tests for git-mirror
+====================
+
+Run tests with::
+
+    ./run-tests.sh
+    ...
+    SUCCESS: all test scripts passed
+
+All tests must pass, i.e. the return code must be 0 and the output must be "SUCCESS: all test scripts passed".
