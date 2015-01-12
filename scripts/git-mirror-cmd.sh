@@ -97,7 +97,7 @@ function version() {
 }
 
 # Globals
-declare -r VERSION="v0.5"
+declare -r VERSION="v0.6"
 
 # Root dir and configuration files
 declare root_dir
