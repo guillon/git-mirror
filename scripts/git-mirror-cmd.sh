@@ -288,6 +288,7 @@ function mirror_create() {
     local repo_basedir="${repo_dir#$local_repos/}"
     local repo_base="$(basename "$repo_basedir")"
     local repo_parent="$(dirname "$repo_basedir")"
+    local git_ssh
     mkdir -p "$local_repos"
     # Restrict access to mirror user only
     chmod 700 "$local_repos"
@@ -300,7 +301,9 @@ function mirror_create() {
     GIT_DIR="$tmpdir2/$repo_base" git config --local remote.origin.mirror true
     GIT_DIR="$tmpdir2/$repo_base" git config --local remote.origin.fetch "+refs/*:refs/*"
     # Check if repo is accessible, otherwise ignore
-    GIT_DIR="$tmpdir2/$repo_base" git ls-remote origin >/dev/null 2>&1 || return 0
+    git_ssh=$(mk_git_ssh)
+    log "INFO: exec: env GIT_DIR=$tmpdir2/$repo_base GIT_SSH=$git_ssh git ls-remote origin"
+    GIT_DIR="$tmpdir2/$repo_base" GIT_SSH="$git_ssh" git ls-remote origin >/dev/null 2>&1 || return 0
     mkdir -p "$local_repos/$repo_parent"
     # Atomic creation of repository
     mv -t "$local_repos/$repo_parent" "$tmpdir2/$repo_base" 2>/dev/null || true
@@ -312,12 +315,10 @@ function mirror_create() {
 # for enforcing concurrency.
 function mirror_update() {
     local repo_dir="${1?}"
-    local remote
     local git_ssh
     local res=0
     [ -d "$repo_dir" ] || return 0
     git_ssh=$(mk_git_ssh)
-    remote=$(GIT_DIR="$repo_dir" git config remote.origin.url)
     log "INFO: exec: env GIT_DIR=$repo_dir GIT_SSH=$git_ssh git fetch --prune origin"
     GIT_DIR="$repo_dir" GIT_SSH="$git_ssh" git fetch --prune origin 2>&1 | log_input "INFO" || res=$?
     [ "$res" = 0 ] || log "WARNING: could not fetch master origin: error code: $?"
