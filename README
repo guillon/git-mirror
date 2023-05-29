@@ -13,6 +13,7 @@ executed on the git server side are:
 - git-upload-pack (when the client does a git fetch or alike),
 - git-upload-archive (when the client does a git archive),
 - git-receive-pack (when the client does a git push or alike).
+- git-lfs-authenticate (when the client request authentication to a LFS backend)
 
 These three command are provided by this package and will act
 as a proxy between the mirror git server and the master git server.
