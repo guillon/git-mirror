@@ -426,6 +426,19 @@ function mirror_upload() {
     fi
 }
 
+# Directly execute git-lfs-authenticate commands on remote
+function mirror_lfs_authenticate() {
+    local cmd="${1?}"
+    shift
+
+    read_config
+    check_config
+    log "INFO: exec: $ssh $ssh_opts -i$master_identity $master_user@$master_server $cmd $@"
+    "$ssh" $ssh_opts -i"$master_identity" "$master_user"@"$master_server" "$cmd" "$@"
+}
+
+
+
 # Direct call to git-mirror-cmd
 function mirror_cmd() {
     case "${1-}" in
@@ -458,6 +471,7 @@ case "$base" in
     git-receive-pack) mirror_receive "$base" "$@" ;;
     git-upload-pack) mirror_upload "$base" "$@" ;;
     git-upload-archive) mirror_upload "$base" "$@" ;;
+    git-lfs-authenticate) mirror_lfs_authenticate "$base" "$@" ;;
     git-mirror-cmd) mirror_cmd "$@" ;;
     *) fatal "unexpected base for $real_base: $base" ;;
 esac
