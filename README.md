@@ -4,7 +4,7 @@ Simple git-mirror proxy tools
 Set of executable scripts acting as a proxy between a
 mirror git server and a master git server.
 
-See the INSTALL file for installation and configuration instructions.
+See the [INSTALL](INSTALL.md) file for installation and configuration instructions.
 
 Installing on a mirror server these tools will have the effect of taking
 precedence for the execution of the three git commands used server side
